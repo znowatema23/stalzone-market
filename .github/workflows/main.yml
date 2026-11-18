@@ -1,0 +1,70 @@
+name: Update Prices & Deploy to GitHub Pages (24/7 Free)
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect project root
+        id: root
+        run: |
+          if [ -f "stalzone-web/requirements.txt" ]; then
+            echo "dir=stalzone-web" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: ${{ steps.root.outputs.dir }}
+        run: pip install -r requirements.txt
+
+      - name: Refresh STALZONE auction data (RU / EU / NA)
+        working-directory: ${{ steps.root.outputs.dir }}
+        env:
+          EXBO_CLIENT_ID: ${{ secrets.EXBO_CLIENT_ID }}
+          EXBO_CLIENT_SECRET: ${{ secrets.EXBO_CLIENT_SECRET }}
+        run: python scripts/refresh_all_items.py
+
+      - name: Build SEO item pages, catalog & sitemap
+        working-directory: ${{ steps.root.outputs.dir }}
+        env:
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: python scripts/build_seo.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '${{ steps.root.outputs.dir }}/public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
