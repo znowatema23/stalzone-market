@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STALZONE Market — Живой аукцион STALCRAFT: X (цены RU / EU / NA, графики, стакан)</title>
+  <meta name="description" content="Бесплатный мониторинг аукциона STALZONE (STALCRAFT: X) 24/7: актуальные цены, история продаж, графики, биржевой стакан, горячие лоты и калькулятор профита для серверов RU, EU и NA.">
+  <meta name="keywords" content="stalzone аукцион, stalcraft аукцион, цены stalzone, stalcraft market, артефакты stalzone, купить предметы stalzone, stalzone ru eu na">
+  <meta property="og:title" content="STALZONE Market — Живой аукцион и цены RU / EU / NA">
+  <meta property="og:description" content="Графики цен, биржевой стакан, поиск выгодных лотов и быстрый заказ предметов STALZONE (STALCRAFT: X).">
+  <meta property="og:type" content="website">
+  <!-- Optional Telegram WebApp SDK (gracefully ignored in normal browsers) -->
+  <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css?v=20261118_web1">
+</head>
+<body>
+  <div class="terminal-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <h1>STALZONE PRO</h1>
+          <p id="brandSubtitle">Биржевой снайпер аукциона</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <a href="catalog.html" class="catalog-link-btn" id="catalogLinkBtn" title="Каталог всех предметов">📚 Каталог</a>
+        <button type="button" id="headerOrderBtn" class="order-header-btn">🛒 Заказать</button>
+        <select id="langSelect" class="region-pill lang-pill" title="Language / Язык">
+          <option value="ru">🇷🇺 RU</option>
+          <option value="en">🇬🇧 EN</option>
+        </select>
+        <select id="regionSelect" class="region-pill">
+          <option value="ru" id="optRegRu">🇷🇺 Россия (RU)</option>
+          <option value="eu" id="optRegEu">🇪🇺 Европа (EU)</option>
+          <option value="na" id="optRegNa">🇺🇸 Сев. Америка (NA)</option>
+        </select>
+        <button id="refreshBtn" class="refresh-btn" title="Обновить">🔄</button>
+      </div>
+    </header>
+
+    <!-- 24/7 Live Monitoring & Stalzone Sync Bar -->
+    <div class="live-sync-bar" id="liveSyncBar">
+      <div class="sync-status">
+        <span class="live-pulse-dot" id="livePulseDot"></span>
+        <span class="sync-status-title" id="syncStatusTitle">Мониторинг 24/7</span>
+      </div>
+      <div class="sync-countdown-wrap" id="syncCountdownWrap" title="Синхронизация с Stalzone API">
+        <span class="sync-timer-icon">⏱️</span>
+        <span class="sync-timer-label" id="syncTimerLabel">Автообновление через:</span>
+        <span class="sync-timer-value" id="syncTimerValue">03:00</span>
+      </div>
+      <div class="sync-timestamp" id="syncTimestamp">
+        <span class="sync-time-label" id="syncTimeLabel">Синхр:</span>
+        <span class="sync-time-val" id="syncTimeVal">31.10 20:10:00</span>
+      </div>
+    </div>
+
+    <!-- Terminal Tab Navigation -->
+    <nav class="nav-tabs">
+      <button type="button" class="nav-tab-btn active" id="tabMarketBtn">
+        <span class="tab-icon">📊</span>
+        <span id="tabMarketLabel">График и Стакан</span>
+      </button>
+      <button type="button" class="nav-tab-btn" id="tabDealsBtn">
+        <span class="tab-icon">🔥</span>
+        <span id="tabDealsLabel">Горячие предложения</span>
+        <span class="tab-badge deals-badge" id="tabDealsBadge" style="display: none;">0</span>
+      </button>
+      <button type="button" class="nav-tab-btn" id="tabEarningsBtn">
+        <span class="tab-icon">💰</span>
+        <span id="tabEarningsLabel">Мой заработок</span>
+        <span class="tab-badge" id="tabEarningsBadge" style="display: none;">+0 ₽</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: MARKET SCANNER & ORDER BOOK -->
+    <div id="marketTabContent" class="tab-content active">
+      <!-- Stat Summary Cards -->
+      <section class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label" id="labelBestPrice">Минимальный лот</div>
+          <div class="stat-value text-green" id="statBestPrice">— ₽</div>
+          <div class="stat-sub" id="statBestAmount">В наличии: 1 шт</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="labelAvgPrice">Средняя цена (30д)</div>
+          <div class="stat-value" id="statAvgPrice">— ₽</div>
+          <div class="stat-sub" id="statDiscount">Скидка: 0%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="labelCeiling">Медиана / Потолок</div>
+          <div class="stat-value text-yellow" id="statCeiling">— ₽</div>
+          <div class="stat-sub" id="statMedian">Медиана: — ₽</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="labelLiquidity">Скорость оборота</div>
+          <div class="stat-value text-blue" id="statLiquidity">—</div>
+          <div class="stat-sub" id="statSalesPerDay">Сделок в день: —</div>
+        </div>
+      </section>
+
+      <!-- Direct Order CTA Banner (Contextual to selected item & region) -->
+      <section class="order-cta-banner" id="orderCtaBanner">
+        <div class="order-cta-info">
+          <div class="order-cta-title" id="orderCtaTitle">⚡ Нужен этот предмет быстро без фарма?</div>
+          <div class="order-cta-sub" id="orderCtaSub">Выкуплю и передам нужный предмет в STALZONE — напрямую или через гаранта FunPay.</div>
+        </div>
+        <div class="order-cta-actions">
+          <a id="ctaOrderTg" class="cta-btn cta-btn-tg" href="https://t.me/polvifp" target="_blank" rel="noopener">✈️ Telegram @polvifp</a>
+          <a id="ctaOrderFp" class="cta-btn cta-btn-fp" href="https://funpay.com/users/8348874/" target="_blank" rel="noopener">🛡 FunPay</a>
+          <button type="button" id="ctaOrderDc" class="cta-btn cta-btn-dc">💬 Discord: angwyttl</button>
+        </div>
+      </section>
+
+      <!-- Main Chart & Order Book Grid -->
+      <main class="main-grid">
+        <!-- Left: Chart & Cycles -->
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title" id="titlePriceChart">
+                <span>📈</span> График динамики цен
+              </div>
+              <div class="panel-sub" id="chartLatestDeal" style="font-size:11px; color:#38bdf8; margin-top:3px; font-weight:500;"></div>
+            </div>
+            <select id="itemSelect" class="item-select"></select>
+          </div>
+
+          <!-- Tier Filter Bar (Rarity & Sharpening for Artifacts & Proto-artifacts) -->
+          <div id="tierFilterBar" class="tier-filter-bar" style="display: none;">
+            <!-- Row 1: Rarity -->
+            <div class="filter-row" id="rarityRow">
+              <span class="filter-label" id="rarityLabel">Редкость:</span>
+              <div class="filter-pills" id="rarityPills">
+                <button type="button" class="filter-pill active" data-qlt="all" id="pillQltAll">Все</button>
+                <button type="button" class="filter-pill" data-qlt="0">⚪ Обычный</button>
+                <button type="button" class="filter-pill" data-qlt="1">🟢 Необычный</button>
+                <button type="button" class="filter-pill" data-qlt="2">🔵 Особый</button>
+                <button type="button" class="filter-pill" data-qlt="3">🟣 Редкий</button>
+                <button type="button" class="filter-pill" data-qlt="4">🔴 Исключительный</button>
+                <button type="button" class="filter-pill" data-qlt="5">🟡 Легендарный</button>
+              </div>
+            </div>
+            <!-- Row 2: Sharpening (for Artifacts) -->
+            <div class="filter-row" id="ptnRow" style="display: none;">
+              <span class="filter-label" id="ptnLabel">Заточка:</span>
+              <div class="filter-pills" id="ptnPills">
+                <button type="button" class="filter-pill active" data-ptn="all" id="pillPtnAll">Любая</button>
+                <button type="button" class="filter-pill" data-ptn="0">+0 (Чистый)</button>
+                <button type="button" class="filter-pill" data-ptn="5">+5</button>
+                <button type="button" class="filter-pill" data-ptn="10">+10</button>
+                <button type="button" class="filter-pill" data-ptn="15">+15</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart Time Range Filter (1D / 1W / 1M / All) -->
+          <div class="filter-row chart-range-bar" id="chartRangeBar">
+            <span class="filter-label" id="chartRangeLabel">Период:</span>
+            <div class="filter-pills" id="chartRangePills">
+              <button type="button" class="filter-pill active" data-range="all" id="pillRangeAll">Все</button>
+              <button type="button" class="filter-pill" data-range="1d" id="pillRange1d">1 День</button>
+              <button type="button" class="filter-pill" data-range="1w" id="pillRange1w">1 Неделя</button>
+              <button type="button" class="filter-pill" data-range="1m" id="pillRange1m">1 Месяц</button>
+            </div>
+          </div>
+
+          <div class="chart-wrapper">
+            <canvas id="priceChart"></canvas>
+          </div>
+
+          <!-- Weekly Cycles -->
+          <div class="cycles-section">
+            <div class="section-title" id="titleCycles">📅 Недельный цикл спроса (Пн - Вс)</div>
+            <div class="cycles-container" id="cyclesContainer"></div>
+          </div>
+        </div>
+
+        <!-- Right: Order Book -->
+        <div class="panel orderbook-panel">
+          <div class="panel-header">
+            <div class="panel-title" id="titleOrderBook">
+              <span>🧱</span> Биржевой стакан (Лоты)
+            </div>
+            <span class="badge badge-live" id="badgeLive"><span class="pulse-dot"></span> СВЕЖИЕ</span>
+          </div>
+          <div class="order-book-list" id="orderBookList">
+            <div class="loading" id="loadingOrderBook">Загрузка стакана...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- TAB 2: HOT DEALS & MARKET ARBITRAGE RADAR -->
+    <div id="dealsTabContent" class="tab-content" style="display: none;">
+      <!-- Category Filter Pills Bar -->
+      <div class="deals-filter-bar" id="dealsFilterBar">
+        <button type="button" class="deals-cat-pill active" data-cat="all" id="pillDealsCatAll">Все категории</button>
+        <button type="button" class="deals-cat-pill" data-cat="Оружие">🔫 Оружие</button>
+        <button type="button" class="deals-cat-pill" data-cat="Броня">🛡 Броня</button>
+        <button type="button" class="deals-cat-pill" data-cat="Расходники">🩸 Расходники</button>
+        <button type="button" class="deals-cat-pill" data-cat="Крупный бартер">💎 Бартер</button>
+        <button type="button" class="deals-cat-pill" data-cat="Артефакты">🌀 Артефакты</button>
+        <button type="button" class="deals-cat-pill" data-cat="Протоартефакты">🔮 Протоарты</button>
+        <button type="button" class="deals-cat-pill" data-cat="Контейнеры">📦 Контейнеры</button>
+        <button type="button" class="deals-cat-pill" data-cat="Убежище">🏠 Убежище</button>
+      </div>
+
+      <!-- Artifact Detailed Filter Sub-Bar (Visible when Artifacts category is active) -->
+      <div class="art-subfilter-container" id="artDealsSubFilter" style="display: none;">
+        <div class="art-subfilter-row">
+          <span class="art-subfilter-label" id="lblArtDealsQlt">Качество:</span>
+          <div class="art-subfilter-pills" id="artDealsRarityPills">
+            <button type="button" class="art-sub-pill active" data-qlt="all">Все</button>
+            <button type="button" class="art-sub-pill tier-q0" data-qlt="0">⚪ Обыч.</button>
+            <button type="button" class="art-sub-pill tier-q1" data-qlt="1">🟢 Необыч.</button>
+            <button type="button" class="art-sub-pill tier-q2" data-qlt="2">🔵 Особ.</button>
+            <button type="button" class="art-sub-pill tier-q3" data-qlt="3">🟣 Редк.</button>
+            <button type="button" class="art-sub-pill tier-q4" data-qlt="4">🔴 Искл.</button>
+            <button type="button" class="art-sub-pill tier-q5" data-qlt="5">🟡 Легенд.</button>
+          </div>
+        </div>
+        <div class="art-subfilter-row">
+          <span class="art-subfilter-label" id="lblArtDealsPtn">Заточка:</span>
+          <div class="art-subfilter-pills" id="artDealsPtnPills">
+            <button type="button" class="art-sub-pill active" data-ptn="all">Все</button>
+            <button type="button" class="art-sub-pill" data-ptn="0">+0</button>
+            <button type="button" class="art-sub-pill" data-ptn="5">+5</button>
+            <button type="button" class="art-sub-pill" data-ptn="10">+10</button>
+            <button type="button" class="art-sub-pill" data-ptn="15">+15</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Hot Deals Table Panel -->
+      <section class="panel table-panel">
+        <div class="panel-header">
+          <div class="panel-title" id="titleDealsTable">
+            <span>🔥</span> <span id="titleDealsLabel">Горячие предложения и подтвержденные разрывы</span>
+          </div>
+          <span class="table-meta" id="updatedAtText">Синхронизация...</span>
+        </div>
+        <div class="table-sub" id="dealsHintText" style="font-size:12px; color:#94a3b8; margin-bottom:12px;">
+          💡 Нажмите на любую строку с предметом, чтобы мгновенно открыть его график динамики и стакан ордеров.
+        </div>
+        <div class="table-responsive">
+          <table class="deals-table">
+            <thead>
+              <tr>
+                <th id="thItem">Предмет</th>
+                <th id="thCategory">Категория</th>
+                <th id="thBuyout">Выкуп лота</th>
+                <th id="thUnitPrice">Цена за шт</th>
+                <th id="thAvgPrice">Средний рынок</th>
+                <th id="thDiscount">Скидка</th>
+                <th id="thSignal">Сигнал рынка</th>
+                <th id="thAction">Действие</th>
+              </tr>
+            </thead>
+            <tbody id="dealsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 3: TRADER EARNINGS & PnL -->
+    <div id="earningsTabContent" class="tab-content" style="display: none;">
+      <!-- Period Switcher & Actions Bar -->
+      <div class="period-switcher-bar">
+        <div class="period-pills-group" id="periodPillsGroup">
+          <button type="button" class="period-pill active" data-period="day" id="pillPeriodDay">📅 День (24ч)</button>
+          <button type="button" class="period-pill" data-period="week" id="pillPeriodWeek">📅 Неделя (7д)</button>
+          <button type="button" class="period-pill" data-period="month" id="pillPeriodMonth">📅 Месяц (30д)</button>
+          <button type="button" class="period-pill" data-period="all" id="pillPeriodAll">♾️ Всё время</button>
+        </div>
+        <button type="button" class="add-deal-btn" id="openAddDealBtn">
+          <span>➕</span> <span id="btnAddDealLabel">Записать сделку</span>
+        </button>
+      </div>
+
+      <!-- Financial Stat Cards -->
+      <section class="stat-grid earnings-stat-grid">
+        <div class="stat-card">
+          <div class="stat-label" id="labelNetProfit">Чистый профит (PnL)</div>
+          <div class="stat-value text-green" id="statNetProfit">— ₽</div>
+          <div class="stat-sub text-green" id="statAvgRoi">Доходность: +0% ROI</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="labelTurnover">Оборот (Вложено в выкуп)</div>
+          <div class="stat-value" id="statTurnover">— ₽</div>
+          <div class="stat-sub" id="statLotsCount">Выкуплено лотов: 0 шт</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="labelRevenue">Расчетная выручка</div>
+          <div class="stat-value text-yellow" id="statRevenue">— ₽</div>
+          <div class="stat-sub" id="statTotalFee">Налог аукциона (5%): — ₽</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="labelBestDeal">Лучший флип</div>
+          <div class="stat-value text-blue" id="statBestDeal">—</div>
+          <div class="stat-sub" id="statBestDealProfit">Профит: — ₽</div>
+        </div>
+      </section>
+
+      <!-- Earnings Chart Panel -->
+      <div class="panel chart-panel earnings-chart-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title" id="titleEarningsChart">
+              <span>📈</span> График динамики прибыли и PnL
+            </div>
+            <div class="panel-sub" id="earningsChartSub" style="font-size:11px; color:#10b981; margin-top:3px; font-weight:500;">
+              Накопленный чистый профит по закрытым сделкам
+            </div>
+          </div>
+          <div class="chart-mode-pills">
+            <button type="button" class="mode-pill active" id="btnModeCumulative" data-mode="cumulative">Накопительный</button>
+            <button type="button" class="mode-pill" id="btnModeDeal" data-mode="deal">По сделкам</button>
+          </div>
+        </div>
+
+        <div class="chart-wrapper earnings-chart-wrapper" id="earningsChartWrapper">
+          <canvas id="earningsChart"></canvas>
+        </div>
+
+        <div id="emptyEarningsMsg" class="empty-earnings-box" style="display: none;">
+          <div class="empty-icon">🛒</div>
+          <div class="empty-title" id="emptyEarningsTitle">В этом периоде пока нет сделок</div>
+          <div class="empty-desc" id="emptyEarningsDesc">
+            Нажимайте «🛒 Я купил этот лот» в Telegram-боте при получении алертов или запишите сделку вручную кнопкой выше!
+          </div>
+        </div>
+      </div>
+
+      <!-- Closed Deals Table -->
+      <section class="panel table-panel earnings-table-panel">
+        <div class="panel-header">
+          <div class="panel-title" id="titleEarningsTable">📋 Журнал занесенных выкупленных лотов</div>
+          <span class="table-meta" id="earningsTableMeta">0 сделок</span>
+        </div>
+        <div class="table-responsive">
+          <table class="deals-table earnings-table">
+            <thead>
+              <tr>
+                <th id="thDealTime">Время</th>
+                <th id="thDealItem">Предмет</th>
+                <th id="thDealBuy">Закупка</th>
+                <th id="thDealSell">Продажа</th>
+                <th id="thDealFee">Налог (5%)</th>
+                <th id="thDealProfit">Чистый профит</th>
+                <th id="thDealAction">Действие</th>
+              </tr>
+            </thead>
+            <tbody id="earningsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Add Deal Modal -->
+  <div id="addDealModal" class="vip-modal-backdrop" style="display: none;">
+    <div class="vip-modal-card add-deal-card">
+      <div class="modal-header">
+        <h3 id="modalAddDealTitle" style="font-size:16px; font-weight:700; color:#fff;">✍️ Записать сделку в журнал</h3>
+        <button type="button" class="modal-close" id="closeAddDealBtn" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <form id="addDealForm" style="margin-top:14px;" onsubmit="return false;">
+        <div class="form-group" style="margin-bottom:12px; text-align:left;">
+          <label id="lblDealItemName" style="font-size:12px; color:#94a3b8; display:block; margin-bottom:5px;">Название предмета</label>
+          <input type="text" id="inputDealItem" class="form-input" placeholder="Например: Стандартные инструменты" style="width:100%; padding:10px 12px; background:#0f172a; border:1px solid #1f2d4d; border-radius:10px; color:#fff; font-size:14px; outline:none;" required>
+        </div>
+        <div class="form-row" style="display:flex; gap:10px; margin-bottom:12px; text-align:left;">
+          <div class="form-group" style="flex:1;">
+            <label id="lblDealBuyPrice" style="font-size:12px; color:#94a3b8; display:block; margin-bottom:5px;">Закупка (₽)</label>
+            <input type="text" id="inputDealBuy" class="form-input" placeholder="25000 или 25к" style="width:100%; padding:10px 12px; background:#0f172a; border:1px solid #1f2d4d; border-radius:10px; color:#fff; font-size:14px; outline:none;" required>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label id="lblDealSellPrice" style="font-size:12px; color:#94a3b8; display:block; margin-bottom:5px;">Продажа (₽)</label>
+            <input type="text" id="inputDealSell" class="form-input" placeholder="50000 или 50к" style="width:100%; padding:10px 12px; background:#0f172a; border:1px solid #1f2d4d; border-radius:10px; color:#fff; font-size:14px; outline:none;" required>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px; text-align:left;">
+          <label id="lblDealAmount" style="font-size:12px; color:#94a3b8; display:block; margin-bottom:5px;">Количество (шт)</label>
+          <input type="number" id="inputDealAmount" class="form-input" value="1" min="1" max="1000" style="width:100%; padding:10px 12px; background:#0f172a; border:1px solid #1f2d4d; border-radius:10px; color:#fff; font-size:14px; outline:none;">
+        </div>
+        <!-- Live Calc Preview -->
+        <div class="deal-calc-box" id="dealCalcPreview" style="background:#0f172a; border:1px dashed #10b981; border-radius:10px; padding:10px 12px; font-size:12px; text-align:left; margin-bottom:16px;">
+          <div>🏷 <b>Налог 5%:</b> <span id="prevTaxFee">-0 ₽</span></div>
+          <div style="margin-top:4px;">💵 <b>Чистый профит:</b> <span id="prevNetProfit" style="color:#10b981; font-weight:700;">+0 ₽ (+0%)</span></div>
+        </div>
+        <button type="button" class="vip-action-btn" id="submitAddDealBtn" style="background:linear-gradient(135deg, #10b981, #059669);">
+          <span>💾</span> <span id="btnSaveDealLabel">Сохранить сделку</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- VIP Paywall Modal Overlay -->
+  <div id="vipPaywallModal" class="vip-modal-backdrop" style="display: none;">
+    <div class="vip-modal-card">
+      <div class="vip-crown-badge">👑</div>
+      <h2 id="vipModalTitle" class="vip-modal-title">STALZONE PRO TERMINAL</h2>
+      <div class="vip-exclusive-pill" id="vipModalBadge">VIP EXCLUSIVE</div>
+      <p id="vipModalSubtitle" class="vip-modal-desc">
+        Доступ к живому биржевому терминалу, графикам динамики цен, свечам и стаканам ордеров открыт эксклюзивно для VIP-пользователей.
+      </p>
+
+      <div class="vip-features-list">
+        <div class="vip-feature-item">
+          <span class="vip-feat-icon">📈</span>
+          <span id="vipFeat1">Интерактивные графики цен и свечи в реальном времени</span>
+        </div>
+        <div class="vip-feature-item">
+          <span class="vip-feat-icon">🧱</span>
+          <span id="vipFeat2">Биржевой стакан и радар разрывов полок</span>
+        </div>
+        <div class="vip-feature-item">
+          <span class="vip-feat-icon">📅</span>
+          <span id="vipFeat3">Недельные циклы спроса и почасовой анализ</span>
+        </div>
+        <div class="vip-feature-item">
+          <span class="vip-feat-icon">🌍</span>
+          <span id="vipFeat4">Все серверы (RU, EU, NA) без задержек и ограничений</span>
+        </div>
+      </div>
+
+      <button type="button" id="vipModalBtn" class="vip-action-btn">
+        <span>💎</span>
+        <span id="vipModalBtnText">Оформить VIP в Telegram-боте</span>
+      </button>
+
+      <div class="vip-modal-footer" id="vipModalFooter">
+        VIP-доступ окупается за 1-2 удачные сделки на аукционе
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Item Modal -->
+  <div id="orderModal" class="vip-modal-backdrop" style="display: none;">
+    <div class="vip-modal-card order-modal-card">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 id="orderModalTitle" style="font-size:18px; font-weight:800; color:#fff;">🛒 Заказать предмет в STALZONE</h3>
+        <button type="button" id="closeOrderModalBtn" style="background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">✕</button>
+      </div>
+      <p id="orderModalDesc" style="font-size:13px; color:#cbd5e1; text-align:left; margin-bottom:14px; line-height:1.5;">
+        Выбирайте удобный способ связи — подскажу актуальную цену и быстро передам нужный предмет на вашем сервере:
+      </p>
+      <div class="order-selected-pill" id="orderSelectedPill">
+        Предмет: <strong id="orderModalItemName">—</strong> (<span id="orderModalRegion">RU</span>)
+      </div>
+      <div class="order-modal-links">
+        <a id="modalOrderTg" class="order-link-btn order-link-tg" href="https://t.me/polvifp" target="_blank" rel="noopener">
+          <span>✈️</span>
+          <div>
+            <div class="order-link-title">Telegram (@polvifp)</div>
+            <div class="order-link-sub" id="modalTgSub">Написать напрямую с готовым текстом заказа</div>
+          </div>
+        </a>
+        <a id="modalOrderFp" class="order-link-btn order-link-fp" href="https://funpay.com/users/8348874/" target="_blank" rel="noopener">
+          <span>🛡</span>
+          <div>
+            <div class="order-link-title">FunPay (гарант-сделка)</div>
+            <div class="order-link-sub" id="modalFpSub">Профиль продавца, отзывы и безопасная оплата</div>
+          </div>
+        </a>
+        <button type="button" id="modalOrderDc" class="order-link-btn order-link-dc">
+          <span>💬</span>
+          <div>
+            <div class="order-link-title">Discord: angwyttl</div>
+            <div class="order-link-sub" id="modalDcSub">Нажмите, чтобы скопировать ник в буфер обмена</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer with SEO Catalog Link & Contacts -->
+  <footer class="web-footer">
+    <div class="web-footer-inner">
+      <span>⚡ STALZONE Market Terminal — мониторинг аукциона RU / EU / NA 24/7</span>
+      <div class="web-footer-links">
+        <a href="catalog.html" id="footerCatalogLink">📚 Каталог всех предметов</a>
+        <a href="https://funpay.com/users/8348874/" target="_blank" rel="noopener">🛡 FunPay</a>
+        <a href="https://t.me/polvifp" target="_blank" rel="noopener">✈️ @polvifp</a>
+        <span style="color:#94a3b8;">💬 Discord: angwyttl</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Quick Toast Notification for deal logging -->
+  <div id="toastNotification" class="toast-notification" style="display: none;"></div>
+
+  <script src="app.js?v=20261118_web1"></script>
+</body>
+</html>
